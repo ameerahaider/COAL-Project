@@ -1,0 +1,2235 @@
+;COAL PROJECT Final phase
+;ALI IMRAN 20I-1763
+;AMEERA HAIDER 20I-0799
+;CS E
+
+.model small
+.stack 100h
+.data
+
+	v1 dw 0
+	v2 dw 0
+	xCord dw 25
+	xCordUpper dw 200
+	yCord dw 25
+	rand dw 0
+	moves dw 5
+	mouseX dw 0
+	mouseY dw 0
+	outPutVar dw 0
+	digitCount db 0
+	score1 dw 1
+	score2 dw 2
+	score3 dw 3
+	totalScore dw 0
+	
+	FNAME DB 'players.txt',0
+	HANDLE DW ?
+	newline db 10
+	space DB " $"
+	
+	r0 db 			"  *******************************  GAME  RULES  ******************************$"
+	r1 db 			"  *    1) Swap two adjacent candies                                          *$"
+	r2 db 			"  *    2) Make a row or column of at least 3 matching-random candies         *$"
+	r3 db 			"  *    3) When Candies are matched, your scrore Increases                    *$"
+	r4 db 			"  *    4) The game is split among three levels                               *$"
+	r5 db 			"  *    5) Each Level must be Completed before the Next                       *$"
+	r6 db 			"  *                                                                          *$"
+	r7 db 			"  ****************************************************************************$"
+	
+	p1 db 			"Name : $"
+	s1 db 	        "Score: $"
+	s6 db 	        "Moves: $"
+	s2 db 	        "Level 1$"
+	s3 db 	        "Level 2$"
+	s4 db 	        "Level 3$"
+	s5 db 	        "CANDY CRUSH$ $"
+	s7 db 			"                              The Game has ended $"
+	s8 db			"                                 Well played $"
+	s9 db			"                        You have successfully completed level 1              $"
+	s10 db			"                        You have successfully completed level 2              $"
+	
+	l1 db           "                               Level 1 Score: $"
+	l2 db           "                               Level 2 Score: $"
+	l3 db           "                               Final   Score: $"
+
+	gameName db 	"  ****************************************************************************$"
+	gameName1 db 	"  *                             CANDY                                        *$"
+	gameName2 db 	"  *                                     CRUSH                                *$"
+	gameName3 db 	"  ****************************************************************************$"
+	namePrompt db 	"  Please Enter your Name:$"	
+	returnPrompt db "  **************************  Press ENTER to Proceed  ************************$"
+	
+	nameSize dw 0
+	nameArray db 0
+.code
+
+;************************************************************************************************************
+;*                                                MACROS                                                    *
+;************************************************************************************************************
+
+
+;************************************************* MACRO TO PRINT STRING ************************************
+printString macro s
+
+		;Output String
+		MOV AH, 09h
+		MOV DX, offset s
+		INT 21h
+endm
+
+setCursor macro x, y
+
+		;Set Cursor
+		MOV AH, 02h
+		MOV BH, 0
+		MOV DL, x
+		MOV DH, y
+		INT 10h
+		
+endm
+
+;************************************************* COLOUR BOMB ***********************************************
+bomb macro x,y
+
+	mov cx, x ;X-axis position
+	mov dx, y ;Y-axis position 
+	
+	sub dx,8
+	.Repeat
+	
+		int 10h
+		inc cx
+	.until (cx==40)
+	
+	mov cx,40 ;X-axis position
+	mov dx,17 ;Y-axis position 
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==32)
+	
+	mov cx,40 ;X-axis position
+	mov dx,17 ;Y-axis position  
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==32)
+	
+	mov cx,25 ;X-axis position
+	mov dx,17 ;Y-axis position  
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==32)
+	
+	mov cx,25 ;X-axis position
+	mov dx,32 ;Y-axis position  
+	.Repeat
+	
+		int 10h
+		inc cx
+	.until (cx==41)
+	
+	mov al,05h
+	mov cx,20 ;X-axis position
+	mov dx,22 ;Y-axis position 
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==28)
+	
+	mov al,05h
+	mov cx, 20 ;X-axis position
+	mov dx, 28 ;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc cx
+	.until (cx==25)
+	
+	mov al,05h
+	mov cx,20 ;X-axis position
+	mov dx,22 ;Y-axis position
+	.Repeat
+
+		int 10h
+		inc cx
+	.until (cx==25)
+	
+	mov al,05h
+	mov cx,45 ;X-axis position
+	mov dx,22 ;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==28)
+	
+	mov al,05h
+	mov cx,40 ;X-axis position
+	mov dx,22 ;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc cx
+	.until (cx==46)
+	
+	mov al,05h
+	mov cx,40 ;X-axis position
+	mov dx,22 ;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc cx
+	.until (cx==46)
+	
+	mov al,05h
+	mov cx,40 ;X-axis position
+	mov dx,28 ;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc cx
+	.until (cx==46)
+endm
+;************************************************************************************************************
+;*                                               MAIN                                                       *
+;************************************************************************************************************
+main proc
+
+	;Defining Start of Memory
+    MOV AX, @DATA 
+    MOV DS, AX
+
+	;SETTING TO VIDEO MODE
+	MOV AH,00H  ;Video Mode
+	MOV AL,00EH ;Selecting Resolution: 320x200 16 color graphics (MCGA,VGA)
+	INT 10H
+	
+;////////////////////////////////////////// Page 1 //////////////////////////////////////////
+
+	;Select Page
+		MOV AH, 05H
+		MOV AL, 01H
+		INT 10H
+	
+	;Change Background Colour
+		MOV AH, 0BH
+		MOV BH, 00H
+		MOV BL, 03H
+		INT 10H  
+
+	;Output Strings
+		call nextLine
+		call nextLine
+		printString gameName
+		call nextLine
+		printString gameName1
+		call nextLine
+		printString gameName2
+		call nextLine
+		printString gameName3
+		call nextLine
+			
+	;Display Prompt
+		
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine 
+		call nextLine
+		
+		printString namePrompt
+			
+	;Input Name
+		
+		MOV DL, ' '
+		MOV AH, 02h
+		INT 21h
+		
+		;Input String
+			MOV SI, 0
+			nameLoop:
+				
+				MOV AH, 01h
+				INT 21h
+				
+				CMP AL, 13
+				JE nameLoopEnd
+				
+				MOV nameArray[SI], AL
+				INC SI
+				JMP nameLoop
+				
+			nameLoopEnd:
+			
+			MOV nameSize, SI
+			MOV nameArray[SI], '$' ;End String
+	
+	;Return Prompt
+	
+		call nextLine
+		call nextLine
+		call nextLine 
+		call nextLine		
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine
+		call nextLine 
+		call nextLine
+		printString returnPrompt
+			
+	;Take Input For Enter
+	enterloop:
+	
+		MOV AH, 08h
+		INT 21h
+	
+	CMP AL, 13
+	JNE enterloop
+	
+;////////////////////////////////////////// Page 2 //////////////////////////////////////////
+	
+	;Select Page
+		MOV AH, 05H
+		MOV AL, 02H
+		INT 10H
+	
+	;Change Background Colour
+		MOV AH, 0BH
+		MOV BH, 00H
+		MOV BL, 03H
+		INT 10H  
+	
+	;Output Strings
+		call nextLine
+		call nextLine
+		printString gameName
+		call nextLine
+		printString gameName1
+		call nextLine
+		printString gameName2
+		call nextLine
+		printString gameName3
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine 
+		call nextLine
+		printString r0
+		call nextLine
+		printString r1
+		call nextLine
+		printString r2
+		call nextLine
+		printString r3
+		call nextLine
+		printString r4
+		call nextLine
+		printString r5
+		call nextLine
+		printString r6
+		call nextLine
+		printString r7
+		call nextLine
+		call nextLine 
+
+		call nextLine 
+		call nextLine
+		call nextLine
+		call nextLine
+		printString returnPrompt
+
+	;Take Input For Enter
+	enterloop1:
+	
+		MOV AH, 08h
+		INT 21h
+	
+	CMP AL, 13
+	JNE enterloop1
+	
+;////////////////////////////////////////// Page 3 //////////////////////////////////////////
+	
+	call level1
+	call level1Game
+	call level1end
+	
+	next1:
+	
+	;Take Input For Enter
+	enterloop2:
+	
+		MOV AH, 08h
+		INT 21h
+	
+	CMP AL, 13
+	JNE enterloop2
+	
+	call level2
+	call level2Game
+	call level2end
+	
+	;Take Input For Enter
+	enterloop3:
+	
+		MOV AH, 08h
+		INT 21h
+	
+	CMP AL, 13
+	JNE enterloop3
+	
+	call level3
+	call level3Game
+	call level3end
+	call writeFile
+	
+exit:
+MOV AH, 4ch
+INT 21h
+	
+main endp
+
+;************************************************************************************************************
+;*                                                PROCEDURES                                                *
+;************************************************************************************************************
+
+;************************************************* Get Coordinates of Mouse *************************************************
+checkforMouseClick proc
+	
+	mov AX, 1			; Show cursor
+	int 33h
+	
+	MOV BX, 0
+	
+	.while (BX != 1)
+	
+		mov AX, 3			; Get button status and mouse cursor coordinates
+		int 33h
+		
+		MOV mouseX, CX
+		MOV mouseY, DX
+		
+	.endw
+	
+	setCursor 226, 5 ;2nd Parameter is y 1st is x //Game Name
+	
+	MOV BX, mouseX
+	MOV outPutVar, BX
+	call output
+	
+	setCursor 226, 6 ;2nd Parameter is y 1st is x //Game Name
+	
+	MOV BX, mouseY
+	MOV outPutVar, BX
+	call output
+	
+	cont:
+
+		call checkForMouseRelease
+				
+	exit_:
+		ret
+
+checkforMouseClick endp 
+
+checkForMouseRelease proc
+	
+	checkLoop:
+		mov AX, 3			
+		int 33h
+
+		cmp BX, 0				; Keep looping until mouse release is detected
+		jne checkLoop
+		
+		
+	exit_1: 
+		ret
+		
+checkForMouseRelease endp
+
+;************************************************* Multi Digit Output *************************************************
+output proc
+		
+		Pushing:
+		MOV AX, outPutVar
+		MOV DX, 0
+		MOV BX, 10
+		DIV BX    
+		PUSH DX
+ 
+		MOV outPutVar, AX
+		INC digitCount
+		CMP AX, 0
+		JNE Pushing
+ 
+		display:
+		
+			CMP digitCount, 0
+			JE return
+			DEC digitCount 
+			POP DX
+			ADD DX, 48
+			MOV AH, 02h
+			INT 21h
+			JMP display
+return:
+	ret
+output endp
+
+;************************************************* PRINT EMPTY LINE *************************************************
+nextLine proc
+
+	;Next Line
+		MOV DL, 10
+		MOV AH, 02h
+		INT 21H
+		ret
+nextLine endp
+
+;************************************************* GENERATE RANDOM NUMBER *************************************************
+random proc
+
+	call Delay
+	mov ah,0h
+	int 01ah
+	
+	mov ax,dx
+	mov dx,0
+	mov bx,6
+	div bx
+	mov rand, dx
+	
+	
+ret
+random endp
+	
+;****************************************************** DELAY ******************************************************
+Delay proc
+
+	push ax
+	push bx
+	push cx
+	push dx
+
+	mov cx, 1000
+	ll0:
+	mov bx, 5;Delay factor 
+	ll1:
+	dec bx
+	jnz ll1
+	loop ll0
+
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
+ret
+Delay endp
+
+;************************************************* PINK DIAMOND *************************************************
+diamond1 proc
+
+mov cx, xCord; CX contains X-axis position means Column #
+mov dx, yCord; DX contains Y-axis position # ROW # 
+		
+;lower triangle
+nextline1:
+	
+		mov bx,15 ;stopping condition
+		mov si,cx
+		mov v1,cx
+		mov v2,dx
+		add v2,2
+		
+	lines1:
+	
+		mov cx,si
+		mov bp,bx
+		inc dx
+		inc si
+		
+		cmp bx,00
+		jle nextline2
+		
+		sub bx,2
+	
+	lines2:
+	
+		mov ah,0ch
+		mov al,0Dh
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je lines1
+		JMP lines2
+
+nextline2:
+	
+		mov bx,15 ;stopping condition
+		mov si,v1
+		mov dx,v2
+	
+    lines3:
+	
+		mov cx,si
+		mov bp,bx
+		dec dx
+		inc si
+		
+		cmp bx,00
+		jle exit2
+		
+		sub bx,2
+	
+	lines4:
+	
+		mov ah,0ch
+		mov al,0Dh
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je lines3
+		JMP lines4
+exit2:		
+ret
+diamond1 endp
+
+;************************************************* BLUE DIAMOND *************************************************
+diamond2 proc
+
+mov cx, xCord; CX contains X-axis position means Column #
+mov dx, yCord; DX contains Y-axis position # ROW # 
+		
+;lower triangle
+nextline11:
+	
+		mov bx,15 ;stopping condition
+		mov si,cx
+		mov v1,cx
+		mov v2,dx
+		add v2,2
+		
+	lines11:
+	
+		mov cx,si
+		mov bp,bx
+		inc dx
+		inc si
+		
+		cmp bx,00
+		jle nextline22
+		
+		sub bx,2
+	
+	lines22:
+	
+		mov ah,0ch
+		mov al,01h
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je lines11
+		JMP lines22
+
+nextline22:
+	
+		mov bx,15 ;stopping condition
+		mov si,v1
+		mov dx,v2
+	
+    lines33:
+	
+		mov cx,si
+		mov bp,bx
+		dec dx
+		inc si
+		
+		cmp bx,00
+		jle exit22
+		
+		sub bx,2
+	
+	lines44:
+	
+		mov ah,0ch
+		mov al,01h
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je lines33
+		JMP lines44
+exit22:		
+ret
+diamond2 endp
+
+;************************************************* BLUE DIAMOND *************************************************
+diamond3 proc
+
+mov cx, xCord; CX contains X-axis position means Column #
+mov dx, yCord; DX contains Y-axis position # ROW # 
+		
+;lower triangle
+nextline111:
+	
+		mov bx,15 ;stopping condition
+		mov si,cx
+		mov v1,cx
+		mov v2,dx
+		add v2,2
+		
+	lines111:
+	
+		mov cx,si
+		mov bp,bx
+		inc dx
+		inc si
+		
+		cmp bx,00
+		jle nextline222
+		
+		sub bx,2
+	
+	lines222:
+	
+		mov ah,0ch
+		mov al,0Ch
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je lines111
+		JMP lines222
+
+nextline222:
+	
+		mov bx,15 ;stopping condition
+		mov si,v1
+		mov dx,v2
+	
+    lines333:
+	
+		mov cx,si
+		mov bp,bx
+		dec dx
+		inc si
+		
+		cmp bx,00
+		jle exit222
+		
+		sub bx,2
+	
+	lines444:
+	
+		mov ah,0ch
+		mov al,0Ch
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je lines333
+		JMP lines444
+exit222:		
+ret
+diamond3 endp
+
+;************************************************* GREEN TRIANGLE *************************************************
+triangle1 proc
+	
+	mov cx, xCord; CX contains X-axis position means Column #
+	mov dx, yCord; DX contains Y-axis position # ROW # 
+		
+	Tnextline2:
+	
+		mov bx,18 ;stopping condition
+		mov si,cx
+	
+	Tlines1:
+	
+		mov cx,si
+		mov bp,bx
+		dec dx
+		inc si
+		
+		cmp bx,00
+		jle exitT
+		
+		sub bx,2
+	
+	Tlines2:
+	
+		mov ah,0ch
+		mov al,02h
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je Tlines1
+		JMP Tlines2
+		
+	exitT:
+	ret
+triangle1 endp
+
+;************************************************* YELLOW TRIANGLE *************************************************
+triangle2 proc
+	
+	mov cx, xCord; CX contains X-axis position means Column #
+	mov dx, yCord; DX contains Y-axis position # ROW # 
+		
+	Tnextline22:
+	
+		mov bx,18 ;stopping condition
+		mov si,cx
+	
+	Tlines11:
+	
+		mov cx,si
+		mov bp,bx
+		dec dx
+		inc si
+		
+		cmp bx,00
+		jle exitTT
+		
+		sub bx,2
+	
+	Tlines22:
+	
+		mov ah,0ch
+		mov al,0Eh
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je Tlines11
+		JMP Tlines22
+		
+	exitTT:
+	ret
+triangle2 endp
+
+;************************************************* YELLOW TRIANGLE *************************************************
+triangle3 proc
+	
+	mov cx, xCord; CX contains X-axis position means Column #
+	mov dx, yCord; DX contains Y-axis position # ROW # 
+		
+	Tnextline222:
+	
+		mov bx,18 ;stopping condition
+		mov si,cx
+	
+	Tlines111:
+	
+		mov cx,si
+		mov bp,bx
+		dec dx
+		inc si
+		
+		cmp bx,00
+		jle exitTTT
+		
+		sub bx,2
+	
+	Tlines222:
+	
+		mov ah,0ch
+		mov al,05h
+		mov cx,cx
+		mov dx,dx
+		int 10h
+		inc cx  ;to move line
+		dec bp  ;to end loop
+		cmp bp,00
+		je Tlines111
+		JMP Tlines222
+		
+	exitTTT:
+	ret
+triangle3 endp
+
+;************************************************* FILL ROW WITH SHAPES *************************************************
+fillRow proc
+
+	.Repeat
+		call random
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		
+		MOV AX, 0
+		MOV DX, 0
+		MOV BX, 0
+		
+		.if rand == 0
+
+			call delay
+			call diamond1
+			
+		.elseif rand == 1
+
+			call delay
+			call triangle1
+			
+		.elseif rand == 2
+
+			call delay
+			call diamond2
+			
+		.elseif rand == 3
+
+			call delay
+			call triangle2
+			
+		.elseif rand == 4
+
+			call delay
+			call triangle3
+			
+		.elseif rand == 5
+		
+			call delay
+			call diamond3
+			
+		.endif
+		
+		ADD xCord, 25
+		MOV DX, xCord
+		
+	.until(DX == xCordUpper)
+	
+ret
+fillRow endp
+
+level1 proc
+
+	;SETTING TO VIDEO MODE
+		MOV AH, 00H  
+		MOV AL, 013H ;Selecting Resolution: 320x200 16 color graphics (MCGA,VGA)
+		INT 10H
+
+	;Colour of Whole Sreen
+		MOV AH, 06h 
+		MOV BH, 00H ;CHANGE TO CHANGE BACK GROUND COLOUR
+		XOR AL, AL
+		XOR CX, CX
+		MOV DX, 184FH
+		INT 10h 	;Screen Interrupt		
+		
+	;_____________________________________________ SCORE AND NAME _____________________________________________
+
+	setCursor 226, 0 ;2nd Parameter is y 1st is x //Game Name
+	printString s5
+	
+	setCursor 226, 1 ;2nd Parameter is y 1st is x //Level
+	printString s2
+	
+	setCursor 226, 2 ;2nd Parameter is y 1st is x //Name
+	printString p1
+	
+	setCursor 232, 2 ;2nd Parameter is y 1st is x
+	printString nameArray
+	
+	setCursor 226, 3 ;2nd Parameter is y 1st is x //Score
+	printString s1
+	
+	setCursor 226, 4 ;2nd Parameter is y 1st is x //Moves
+	printString s6
+	
+;_____________________________________________ DRAWING LINES FOR BOARD _____________________________________________
+	
+	;Colour of Pixel
+	mov ah, 0CH 
+	mov al, 0FH ;AL contains color
+	
+	mov cx, 20	;X-axis position
+	mov dx, 12	;Y-axis position
+ 	
+	;First Row
+	.Repeat
+		call delay
+		int 10h 
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+	
+	;Last Col
+	mov cx,195	;X-axis position
+	mov dx,12	;Y-axis position
+	.Repeat
+		call delay
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Last Row 
+	mov cx, 195	;X-axis position
+	mov dx, 187	;Y-axis position
+	.Repeat
+		call delay
+		int 10h
+		dec cx
+	.until (cx==20)
+	
+	;First Col
+	mov cx,20	;X-axis position
+	mov dx,187	;Y-axis position 
+	
+	.Repeat
+		call delay
+		int 10h
+		dec dx
+	.until (dx==12)
+	
+	;Second Row
+	mov cx,20	;X-axis position
+	mov dx,37	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Third Row
+	mov cx,20	;X-axis position
+	mov dx,62	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Fouth Row
+	mov cx,20	;X-axis position
+	mov dx,87	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Fifth Row
+	mov cx,20	;X-axis position
+	mov dx,112	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Sixth Row
+	mov cx,20	;X-axis position
+	mov dx,137	;Y-axis position	
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Seventh Row
+	mov cx,20	;X-axis position
+	mov dx,162	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Second Col
+	mov cx, 45	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Third Col
+	mov cx, 70	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Fourth Col
+	mov cx, 95	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Fifth Col
+	mov cx, 120	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Sixth Col
+	mov cx, 145	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Seventh Col
+	mov cx, 170	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;_____________________________________________ CANDIES _____________________________________________
+	
+	;making bomb
+	mov cx,25
+	mov dx,25
+	bomb cx,dx
+	;Row 1
+	MOV xCord, 50 ;X-axis position
+	MOV yCord, 25 ;Y-axis position
+	call fillRow
+	
+	;Row 2
+	MOV xCord, 25 ;X-axis position
+	MOV yCord, 50 ;Y-axis position
+	call fillRow
+	
+	;Row 3
+	MOV xCord, 25 ;X-axis position
+	MOV yCord, 75 ;Y-axis position
+	call fillRow
+	
+	;Row 4
+	MOV xCord, 25  ;X-axis position
+	MOV yCord, 100 ;Y-axis position
+	call fillRow
+	
+	;Row 5
+	MOV xCord, 25  ;X-axis position
+	MOV yCord, 125 ;Y-axis position
+	call fillRow
+		
+	;Row 6
+	MOV xCord, 25 ;X-axis position
+	MOV yCord, 150
+	call fillRow
+	
+	;Row 7
+	MOV xCord, 25  ;X-axis position
+	MOV yCord, 175 ;Y-axis position
+	call fillRow
+	
+ret 
+level1 endp 
+
+;//////////////////////////////////////////LEVEL 2 ROW EXCEPTIONS
+fillRow_ex1 proc
+
+	.Repeat
+		call random
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		
+		.if !(xCord > 75 && xCord < 125)
+		
+			.if rand == 0
+
+			call delay
+			call diamond1
+			
+			.elseif rand == 1
+
+				call delay
+				call triangle1
+				
+			.elseif rand == 2
+
+				call delay
+				call diamond2
+				
+			.elseif rand == 3
+
+				call delay
+				call triangle2
+				
+			.elseif rand == 4
+
+				call delay
+				call triangle3
+				
+			.elseif rand == 5
+			
+				call delay
+				call diamond3
+				
+			.endif
+		.endif
+		
+		ADD xCord, 25
+		MOV DX, xCord
+		
+	.until(DX == 175)
+	
+ret
+fillRow_ex1 endp
+
+fillRow_ex2 proc
+
+	.Repeat
+		call random
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		
+		.if rand == 0
+
+		call delay
+		call diamond1
+		
+		.elseif rand == 1
+
+			call delay
+			call triangle1
+			
+		.elseif rand == 2
+
+			call delay
+			call diamond2
+			
+		.elseif rand == 3
+
+			call delay
+			call triangle2
+			
+		.elseif rand == 4
+
+			call delay
+			call triangle3
+			
+		.elseif rand == 5
+		
+			call delay
+			call diamond3
+			
+		.endif
+		
+		ADD xCord, 25
+		MOV DX, xCord
+		
+	.until(DX == 175)
+	
+ret
+fillRow_ex2 endp
+
+level2 proc
+
+	;SETTING TO VIDEO MODE
+		MOV AH, 00H  
+		MOV AL, 013H ;Selecting Resolution: 320x200 16 color graphics (MCGA,VGA)
+		INT 10H
+
+	;Colour of Whole Sreen
+		MOV AH, 06h 
+		MOV BH, 00H ;CHANGE TO CHANGE BACK GROUND COLOUR
+		XOR AL, AL
+		XOR CX, CX
+		MOV DX, 184FH
+		INT 10h 	;Screen Interrupt		
+		
+	;_____________________________________________ SCORE AND NAME _____________________________________________
+
+	setCursor 225, 0 ;2nd Parameter is y 1st is x //Game Name
+	printString s5
+	
+	setCursor 225, 1 ;2nd Parameter is y 1st is x //Level
+	printString s3
+	
+	setCursor 225, 2 ;2nd Parameter is y 1st is x //Name
+	printString p1
+	
+	setCursor 232, 2 ;2nd Parameter is y 1st is x
+	printString nameArray
+	
+	setCursor 225, 3 ;2nd Parameter is y 1st is x //Score
+	printString s1
+	
+	setCursor 225, 4 ;2nd Parameter is y 1st is x //Moves
+	printString s6
+
+;_____________________________________________ DRAWING LINES FOR BOARD _____________________________________________
+	
+	;Colour of Pixel
+	mov ah, 0CH 
+	mov al, 0FH ;AL contains color
+	
+	;First Row	
+	mov cx, 45	;X-axis position
+	mov dx, 12	;Y-axis position
+ 
+	.Repeat
+		call delay
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 170) ;Increase X co ordinate from 20 to 195
+	
+	;Last Col
+	mov cx,195	;X-axis position
+	mov dx,62	;Y-axis position
+	
+	.Repeat
+		call delay
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		inc dx
+	.until (dx==137)
+	
+	;Last Row 
+	mov cx, 45	;X-axis position
+	mov dx, 187	;Y-axis position
+	.Repeat
+	
+		call delay
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx==170)
+	
+	;First Col
+	mov cx,20	;X-axis position
+	mov dx,62	;Y-axis position 
+	
+	.Repeat
+	
+		call delay
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==137)
+	
+	;Second Row
+	mov cx,45	;X-axis position
+	mov dx,37	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==170)
+	
+	;Third Row
+	mov cx,20	;X-axis position
+	mov dx,62	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Fouth Row
+	mov cx,20	;X-axis position
+	mov dx,87	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Fifth Row
+	mov cx,20	;X-axis position
+	mov dx,112	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Sixth Row
+	mov cx,20	;X-axis position
+	mov dx,137	;Y-axis position	
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==195)
+	
+	;Seventh Row
+	mov cx,45	;X-axis position
+	mov dx,162	;Y-axis position
+	.Repeat
+		int 10h
+		inc cx
+	.until (cx==170)
+	
+	;Second Col
+	mov cx, 45	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Third Col
+	mov cx, 70	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Fourth Col
+	mov cx, 95	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Fifth Col
+	mov cx, 120	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Sixth Col
+	mov cx, 145	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;Seventh Col
+	mov cx, 170	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+	
+		int 10h
+		inc dx
+	.until (dx==187)
+	
+	;_____________________________________________ CANDIES _____________________________________________
+	;making bomb
+	mov cx,50
+	mov dx,25
+	bomb cx,dx
+	
+	;Row 1
+	MOV xCord, 75 ;X-axis position
+	MOV yCord, 25 ;Y-axis position
+	call fillRow_ex1
+	
+	;Row 2
+	MOV xCord, 50 ;X-axis position
+	MOV yCord, 50 ;Y-axis position
+	call fillRow_ex2
+	
+	;Row 3
+	MOV xCord, 25 ;X-axis position
+	MOV yCord, 75 ;Y-axis position
+	call fillRow
+	
+	;Row 4
+	MOV xCord, 50  ;X-axis position
+	MOV yCord, 100 ;Y-axis position
+	call fillRow_ex2
+	
+	;Row 5
+	MOV xCord, 25  ;X-axis position
+	MOV yCord, 125 ;Y-axis position
+	call fillRow
+		
+	;Row 6
+	MOV xCord, 50 ;X-axis position
+	MOV yCord, 150
+	call fillRow_ex2
+	
+	;Row 7
+	MOV xCord, 50  ;X-axis position
+	MOV yCord, 175 ;Y-axis position
+	call fillRow_ex1
+	
+ret 
+level2 endp
+
+;//////////////////////////////////////////LEVEL 2 ROW EXCEPTIONS
+fillRow_ex3 proc
+
+	.Repeat
+		call random
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		call Delay
+		
+		.if !(xCord > 75 && xCord < 125)
+		
+			.if rand == 0
+
+			call delay
+			call diamond1
+			
+			.elseif rand == 1
+
+				call delay
+				call triangle1
+				
+			.elseif rand == 2
+
+				call delay
+				call diamond2
+				
+			.elseif rand == 3
+
+				call delay
+				call triangle2
+				
+			.elseif rand == 4
+
+				call delay
+				call triangle3
+				
+			.elseif rand == 5
+			
+				call delay
+				call diamond3
+				
+			.endif
+		.endif
+		
+		ADD xCord, 25
+		MOV DX, xCord
+		
+	.until(DX == 200)
+	
+ret
+fillRow_ex3 endp
+
+level3 proc
+
+	;SETTING TO VIDEO MODE
+		MOV AH, 00H  
+		MOV AL, 013H ;Selecting Resolution: 320x200 16 color graphics (MCGA,VGA)
+		INT 10H
+
+	;Colour of Whole Sreen
+		MOV AH, 06h 
+		MOV BH, 00H ;CHANGE TO CHANGE BACK GROUND COLOUR
+		XOR AL, AL
+		XOR CX, CX
+		MOV DX, 184FH
+		INT 10h 	;Screen Interrupt		
+		
+	;_____________________________________________ SCORE AND NAME _____________________________________________
+
+	setCursor 225, 0 ;2nd Parameter is y 1st is x //Game Name
+	printString s5
+	
+	setCursor 225, 1 ;2nd Parameter is y 1st is x //Level
+	printString s4
+	
+	setCursor 225, 2 ;2nd Parameter is y 1st is x //Name
+	printString p1
+	
+	setCursor 232, 2 ;2nd Parameter is y 1st is x
+	printString nameArray
+	
+	setCursor 225, 3 ;2nd Parameter is y 1st is x //Score
+	printString s1
+	
+	setCursor 225, 4 ;2nd Parameter is y 1st is x //Moves
+	printString s6
+	
+	
+
+;_____________________________________________ DRAWING LINES FOR BOARD _____________________________________________
+	
+	;Colour of Pixel
+	mov ah, 0CH 
+	mov al, 0FH ;AL contains color
+	
+	;First Row	
+	mov cx, 20	;X-axis position
+	mov dx, 12	;Y-axis position
+ 
+	.Repeat
+		call delay
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+	
+	;Last Col
+	mov cx,195	;X-axis position
+	mov dx,12	;Y-axis position
+	.Repeat
+	
+		call delay
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		inc dx
+	.until (dx==187)
+	
+	;Last Row 
+	mov cx, 20	;X-axis position
+	mov dx, 187	;Y-axis position
+	
+	.Repeat
+		call delay
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+
+	
+	;First Col
+	mov cx,20	;X-axis position
+	mov dx,12	;Y-axis position 
+	.Repeat
+	
+		call delay
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==187)
+	
+	;Second Row
+	mov cx,20	;X-axis position
+	mov dx,37	;Y-axis position
+	
+	.Repeat
+		
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+
+	
+	;Third Row
+	mov cx,20	;X-axis position
+	mov dx,62	;Y-axis position
+	
+	.Repeat
+		
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+
+	
+	;Fouth Row
+	mov cx,20	;X-axis position
+	mov dx,87	;Y-axis position
+	.Repeat
+		
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+	
+	;Fifth Row
+	mov cx,20	;X-axis position
+	mov dx,112	;Y-axis position
+	.Repeat
+		
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+	
+	;Sixth Row
+	mov cx,20	;X-axis position
+	mov dx,137	;Y-axis position	
+	.Repeat
+		
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+	
+	;Seventh Row
+	mov cx,20	;X-axis position
+	mov dx,162	;Y-axis position
+	.Repeat
+		
+		.if !(cx > 95 && cx < 120)
+			int 10h 
+		.endif
+		inc cx
+	.until (cx == 195) ;Increase X co ordinate from 20 to 195
+	
+	;Second Col
+	mov cx, 45	;X-axis position
+	mov dx, 12	;Y-axis position
+	
+	.Repeat
+	
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==187)
+
+	
+	;Third Col
+	mov cx, 70	;X-axis position
+	mov dx, 12	;Y-axis position
+	
+	.Repeat
+	
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==187)
+
+	
+	;Fourth Col
+	mov cx, 95	;X-axis position
+	mov dx, 12	;Y-axis position
+	.Repeat
+	
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==187)
+	
+	;Fifth Col
+	mov cx, 120	;X-axis position
+	mov dx, 12	;Y-axis position
+	
+	.Repeat
+	
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==187)
+
+	
+	;Sixth Col
+	mov cx, 145	;X-axis position
+	mov dx, 12	;Y-axis position
+	
+	.Repeat
+	
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==187)
+
+	
+	;Seventh Col
+	mov cx, 170	;X-axis position
+	mov dx, 12	;Y-axis position
+	
+	.Repeat
+	
+		.if !(dx > 87 && dx < 112)
+			int 10h 
+		.endif
+		
+		inc dx
+	.until (dx==187)
+
+	
+	;_____________________________________________ CANDIES _____________________________________________
+	;for bomb
+	mov cx,25
+	mov dx,25
+	bomb cx,dx
+
+	
+	;Row 1
+	MOV xCord, 50 ;X-axis position
+	MOV yCord, 25 ;Y-axis position
+	call fillRow_ex3
+	
+	;Row 2
+	MOV xCord, 25 ;X-axis position
+	MOV yCord, 50 ;Y-axis position
+	call fillRow_ex3
+	
+	;Row 3
+	MOV xCord, 25 ;X-axis position
+	MOV yCord, 75 ;Y-axis position
+	call fillRow_ex3
+	
+	;Row 5
+	MOV xCord, 25  ;X-axis position
+	MOV yCord, 125 ;Y-axis position
+	call fillRow_ex3
+		
+	;Row 6
+	MOV xCord, 25 ;X-axis position
+	MOV yCord, 150
+	call fillRow_ex3
+	
+	;Row 7
+	MOV xCord, 25  ;X-axis position
+	MOV yCord, 175 ;Y-axis position
+	call fillRow_ex3
+	
+ret 
+level3 endp
+
+level1Game proc
+	
+	;Reset Moves
+	MOV moves, 5
+	
+	MOV AX, 01	;Show Mouse
+	INT 33h
+	
+	loop1:
+		
+		;Update Score
+			setCursor 232, 3 ;2nd Parameter is y 1st is x
+			MOV BX, score1
+			MOV outPutVar, BX
+			call output
+		
+		;Update Moves
+			setCursor 232, 4 ;2nd Parameter is y 1st is x
+			MOV BX, 0
+			MOV BX, moves
+			MOV outPutVar, BX
+			call output
+		
+		call checkforMouseClick
+		
+		;1 Move completed
+		DEC moves
+		
+		CMP moves, 0
+		JE return
+		
+	JMP loop1
+
+return:
+ret
+level1Game endp
+
+level2Game proc
+
+	;Reset Moves
+	MOV moves, 5
+	
+	MOV AX, 01	;Show Mouse
+	INT 33h
+	
+	loop1:
+		
+		;Update Score
+			setCursor 232, 3 ;2nd Parameter is y 1st is x
+			MOV BX, score2
+			MOV outPutVar, BX
+			call output
+		
+		;Update Moves
+			setCursor 232, 4 ;2nd Parameter is y 1st is x
+			MOV BX, 0
+			MOV BX, moves
+			MOV outPutVar, BX
+			call output
+		
+		call checkforMouseClick
+		
+		;1 Move completed
+		DEC moves
+		
+		CMP moves, 0
+		JE return
+		
+	JMP loop1
+
+return:
+ret
+level2Game endp
+
+level3Game proc
+	
+	;Reset Moves
+	MOV moves, 5
+	
+	MOV AX, 01	;Show Mouse
+	INT 33h
+	
+	loop1:
+		
+		;Update Score
+			setCursor 232, 3 ;2nd Parameter is y 1st is x
+			MOV BX, score3
+			MOV outPutVar, BX
+			call output
+		
+		;Update Moves
+			setCursor 232, 4 ;2nd Parameter is y 1st is x
+			MOV BX, 0
+			MOV BX, moves
+			MOV outPutVar, BX
+			call output
+		
+		call checkforMouseClick
+		
+		;1 Move completed
+		DEC moves
+		
+		CMP moves, 0
+		JE return
+		
+	JMP loop1
+
+return:
+ret
+level3Game endp
+
+level1end proc
+
+	;SETTING TO VIDEO MODE
+	MOV AH,00H  ;Video Mode
+	MOV AL,00EH ;Selecting Resolution: 320x200 16 color graphics (MCGA,VGA)
+	INT 10H
+	
+	MOV AX, 02	;Hide Mouse
+	INT 33h
+	
+	;Change Background Colour
+		MOV AH, 0BH
+		MOV BH, 00H
+		MOV BL, 03H
+		INT 10H  
+	
+	;Output Strings
+		call nextLine
+		call nextLine
+		printString gameName
+		call nextLine
+		printString gameName1
+		call nextLine
+		printString gameName2
+		call nextLine
+		printString gameName3
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine 
+		call nextLine
+		
+		printString l1
+		
+		;setCursor 50,50
+		MOV BX, score1
+		MOV outPutVar, BX
+		call output
+		
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine
+		printString s9
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine
+		call nextLine
+		call nextLine
+		printString returnPrompt
+
+
+return:
+ret
+level1end endp
+
+level2end proc
+
+	;SETTING TO VIDEO MODE
+	MOV AH,00H  ;Video Mode
+	MOV AL,00EH ;Selecting Resolution: 320x200 16 color graphics (MCGA,VGA)
+	INT 10H
+	
+	MOV AX, 02	;Hide Mouse
+	INT 33h
+	
+	;Change Background Colour
+		MOV AH, 0BH
+		MOV BH, 00H
+		MOV BL, 03H
+		INT 10H  
+	
+	;Output Strings
+		call nextLine
+		call nextLine
+		printString gameName
+		call nextLine
+		printString gameName1
+		call nextLine
+		printString gameName2
+		call nextLine
+		printString gameName3
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine 
+		call nextLine
+		
+		printString l2
+		
+		;setCursor 50,50
+		MOV BX, score2
+		MOV outPutVar, BX
+		call output
+		
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine
+		printString s10
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine
+		call nextLine
+		call nextLine
+		printString returnPrompt
+
+
+return:
+ret
+level2end endp
+
+level3end proc
+
+	;SETTING TO VIDEO MODE
+	MOV AH,00H  ;Video Mode
+	MOV AL,00EH ;Selecting Resolution: 320x200 16 color graphics (MCGA,VGA)
+	INT 10H
+	
+	MOV AX, 02	;Hide Mouse
+	INT 33h
+	
+	;Change Background Colour
+		MOV AH, 0BH
+		MOV BH, 00H
+		MOV BL, 03H
+		INT 10H  
+	
+	;Output Strings
+		call nextLine
+		call nextLine
+		printString gameName
+		call nextLine
+		printString gameName1
+		call nextLine
+		printString gameName2
+		call nextLine
+		printString gameName3
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine 
+		call nextLine
+		
+		printString l3
+		
+		;setCursor 50,50
+		MOV BX, score2
+		ADD score3, BX
+		MOV BX, score1
+		ADD score3, BX
+		
+		MOV BX, score3
+		MOV outPutVar, BX
+		call output
+		
+		call nextLine
+		call nextLine
+		call nextLine
+		printString s7
+		call nextLine
+		call nextLine
+		printString s8
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine
+		call nextLine 
+		call nextLine 
+		call nextLine
+		call nextLine
+		call nextLine
+		printString returnPrompt
+
+return:
+ret
+level3end endp
+
+writeFile proc
+
+	;***************OPEING AN EXISTING FILE***************;
+	MOV AH,3DH; For opening an existing file of name fname
+	MOV DX,OFFSET FNAME
+	MOV AL, 1  ;0 for Reading Mode, 1 MEAN FOR WRITING PURPOSE, 2 means for both reading and writing mode
+	INT 21H
+	MOV HANDLE,AX
+
+	; File Pointers
+	MOV AH,42H		; move file pointer function
+	MOV BX,HANDLE	; Bx holds the handle which tells in which file we have to write
+	XOR CX,CX		; Movig 0 bytes to CX
+	XOR DX,DX		; Movig 0 bytes to DX
+	MOV AL, 2		;Movement Code	:0 means move relative to beginning of file
+									;1 means move relative to the current Pointer location
+									;2 means move relative to the end of file; 
+	INT 21H			;move pointer to the end
+	
+	;For Writing PURPOSE in the existing file, we use 40H
+	
+	;New Line
+	MOV AH, 40H
+	MOV BX, HANDLE; Bx holds the handle which tells in which file we have to write
+	MOV CX, 1; How many bytes we have to write
+	MOV DX, OFFSET newline
+	INT 21H
+	
+	;Player Name
+	MOV AH, 40H
+	MOV BX, HANDLE; Bx holds the handle which tells in which file we have to write
+	MOV CX,nameSize; How many bytes we have to write
+	MOV DX, OFFSET nameArray
+	INT 21H
+	
+	;Space
+	MOV AH, 40H
+	MOV BX, HANDLE; Bx holds the handle which tells in which file we have to write
+	MOV CX, 1; How many bytes we have to write
+	MOV DX, OFFSET space
+	INT 21H
+	
+	;Score
+	Pushing:
+		MOV AX, score3
+		MOV DX, 0
+		MOV BX, 10
+		DIV BX    
+		PUSH DX
+ 
+		MOV outPutVar, AX
+		INC digitCount
+		CMP AX, 0
+		JNE Pushing
+ 
+	display:
+		
+			CMP digitCount, 0
+			JE return
+			DEC digitCount 
+			POP DX
+			ADD DX, 48
+			
+			;Writing digit to file
+			MOV AH, 40H
+			MOV BX, HANDLE; Bx holds the handle which tells in which file we have to write
+			MOV CX,1; How many bytes we have to write
+			MOV outPutVar, DX
+			MOV DX, OFFSET outPutVar
+			INT 21H
+			
+			JMP display
+	
+	return:
+	
+	; Closing the File
+	MOV AH,3EH
+	MOV BX,HANDLE
+	INT 21H
+	
+	ret
+writeFile endp
+END
